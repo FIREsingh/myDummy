@@ -1,0 +1,169 @@
+import AdminDashboardNavbar from '@/AdminComponents/Dashboard/AdminDashboardNavbar';
+import { Button } from '../../components/ui/button';
+import { Calendar } from '../../components/ui/calendar';
+import { Input } from '../../components/ui/input';
+import { Label } from '../../components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover';
+import { Textarea } from '../../components/ui/textarea';
+import { cn } from '@/lib/utils';
+import { Calendar as CalendarIcon } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { format } from 'date-fns'; // Import the format function
+import axios from 'axios';
+import { EDUCATION_API_END_POINT } from '@/utils/URLS.js';
+import { useNavigate, useParams } from 'react-router-dom';
+import { toast } from 'sonner';
+import useGetEducationById from '@/hooks/useGetEducationById';
+import { useSelector } from 'react-redux';
+
+const UpdateEducationForm = () => {
+  const params = useParams();
+  const id = params.id
+  useGetEducationById(id);
+  const {singleEducation} = useSelector(store => store.education);
+  const [input, setInput] = useState({
+    school: '',
+    degree: '',
+    fromDate: '',
+    toDate: '',
+    description: '',
+  });
+
+  const navigate = useNavigate();
+  const changeEventHandler = (e) => {
+    setInput({
+      ...input,
+      [e.target.name]: e.target.value,
+    });
+  };
+
+  const DateHandler = (name, date) => {
+    const formattedDate = format(date, "dd/MM/yyyy"); // Format the date
+    setInput((prevInput) => ({
+      ...prevInput,
+      [name]: formattedDate, // Store the formatted date in the state
+    }));
+  };
+
+  const submitHandler = async (e) => {
+    e.preventDefault();
+    const formData = new FormData();
+    formData.append('school', input.school);
+    formData.append('degree', input.degree);
+    formData.append('from', input.fromDate);
+    formData.append('to', input.toDate);
+    formData.append('description', input.description);
+
+    try {
+      const res = await axios.post(`${EDUCATION_API_END_POINT}/${id}/edit`, formData, {
+        headers: {
+          "Content-Type": "application/json"
+        }
+      });
+
+      if (res.data.success) {
+        navigate('/admin/dashboard')
+        console.log("Education Added Successfully")
+        toast.success(res.data.message)
+      }
+    } catch (err) {
+      console.log(err)
+      toast.error(err.response.data.message)
+    }
+  };
+
+  useEffect(() => {
+    const extractDate = (dateStr) => {
+      if (!dateStr) return null;
+      const date = new Date(dateStr);
+      return format(date, "dd/MM/yyyy");
+    };
+    setInput({
+      school: singleEducation.school || "",
+      degree: singleEducation.degree || "",
+      fromDate: extractDate(singleEducation.from),
+      toDate: extractDate(singleEducation.to),
+      description: singleEducation.description || ""
+    });
+  }, [singleEducation]);
+
+  return (
+    <div>
+      <AdminDashboardNavbar />
+      <div className="flex items-center justify-center max-w-7xl mx-auto">
+        <form onSubmit={submitHandler} className="w-1/2 border border-gray-200 rounded-md p-4 my-10" encType='application/json'>
+          <h1 className="text-xl font-titleFonts font-bold mb-5">Update Education</h1>
+
+          <div className="my-2">
+            <Label htmlFor="school">School</Label>
+            <Input type="text" name="school" value={input.school} onChange={changeEventHandler} />
+          </div>
+
+          <div className="my-2">
+            <Label htmlFor="degree">Degree</Label>
+            <Input type="text" name="degree" value={input.degree} onChange={changeEventHandler} />
+          </div>
+
+          <div className="flex gap-2">
+            <div className="flex-grow my-2">
+              <Label htmlFor="fromDate">From</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn("w-full justify-start text-left font-normal", !input.fromDate && "text-muted-foreground")}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {input.fromDate ? input.fromDate : <span>Pick a date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={input.fromDate}
+                    onSelect={(date) => DateHandler('fromDate', date)}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            <div className="flex-grow my-2">
+              <Label htmlFor="toDate">To</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn("w-full justify-start text-left font-normal", !input.toDate && "text-muted-foreground")}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {input.toDate ? input.toDate : <span>Pick a date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={input.toDate}
+                    onSelect={(date) => DateHandler('toDate', date)}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+
+          <div className="my-2">
+            <Label htmlFor="description">Description</Label>
+            <Textarea name="description" value={input.description} onChange={changeEventHandler}></Textarea>
+          </div>
+
+          <Button variant="outline" className="w-full mt-5 bg-designColor">
+            Update
+          </Button>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+export default UpdateEducationForm;
